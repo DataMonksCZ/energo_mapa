@@ -7,12 +7,14 @@ library(czso)
 library(readxl)
 library(colorspace) #hclwizard()
 library(sf)
+library(openxlsx)
 
 ##################################### Import #######################################
 
 #dostupné z https://www.czso.cz/csu/czso/14-energetika-pno7t8lj6g
-#14-101. Instalovaný výkon elektrizační soustavy podle krajů v roce 2020 
-dt_kraje <- read_excel("data/data_kraje_energetika.xlsx", na = "-") 
+dt_kraje <- read.xlsx("https://www.czso.cz/documents/10180/141845536/2114101.xlsx/8e4b7ad4-2b81-4fda-be02-b70ad1f0fdc1?version=1.9",
+                      sheet=1, rows = c(7,9,  11:17), cols = 1:16)
+names(dt_kraje) <- c("Instalovaný výkon elektrizační soustavy (MW)", "Česká republika","Hlavní město Praha","Středočeský","Jihočeský","Plzeňský","Karlovarský","Ústecký","Liberecký","Královéhradecký","Pardubický","Vysočina","Jihomoravský","Olomoucký","Zlínský","Moravskoslezský")
 dt_kraje[,2:ncol(dt_kraje)] <- apply(dt_kraje[,2:ncol(dt_kraje)], MARGIN = c(1,2), as.numeric)
 
 ################################### Data transformace ###############################
@@ -59,18 +61,15 @@ of_kraje_cut <- of_kraje %>% mutate(value_cut = cut(suma, breaks = c(200, 700, 1
 cols <- sequential_hcl(n = 6, h = 274, c = c(58, NA, NA), l = c(18, 98), power = 1.85, rev = TRUE, register = )
 
 #mapa
-ggplot(data = of_kraje_cut)+
+p <- ggplot(data = of_kraje_cut)+
   geom_sf(data = republika(), color = "grey30", fill = NA)+ #vykreslí mapu ČR
   geom_sf(data = of_kraje_cut, aes(fill = value_cut), color = "black", size = 0.4)+ #vykreslí kraje a vyplní barvama
-  geom_sf_label(aes(label = NAZ_CZNUTS3),fill = "white", fun.geometry = sf::st_centroid, size = 4,
+  geom_sf_label(aes(label = NAZ_CZNUTS3),fill = "white", fun.geometry = sf::st_centroid, size = 6,
                 nudge_y = c(-0.2, rep(0,9), -0.1, rep(0,3)))+ #posune názvy středočeského a olomouckého kraje
   labs(fill = "Instalovaný výkon\n")+ #titulek legendy
-  scale_fill_manual(values = cols, labels = c("200 - 700 MW",
-                                              "700 - 1200 MW",
-                                              "1200 - 1700 MW",
-                                              "2200 - 2800 MW",
-                                              "2800 - 3200 MW",
-                                              "5200 - 5700 MW"), drop = FALSE)+ #popisky legendy
+  scale_fill_manual(values = cols, labels = c("200 - 700 MW","700 - 1200 MW",
+                                              "1200 - 1700 MW","2200 - 2800 MW",
+                                              "2800 - 3200 MW","5200 - 5700 MW"), drop = FALSE)+ #popisky legendy
   theme_void() +
   theme(
     legend.position=c(0.75,1), #mění pozici legendy
@@ -81,5 +80,6 @@ ggplot(data = of_kraje_cut)+
     legend.title = element_text(size=15), #změní velikost písma titulku
     legend.text = element_text(size=12), #změní velikost písma popisků
     legend.spacing.y = unit(0.3, 'cm')) + #změní rozestup položek legendy
-      guides(fill = guide_legend(byrow = TRUE), #nutné, aby fungoval rozestup
+  guides(fill = guide_legend(byrow = TRUE), #nutné, aby fungoval rozestup
   )
+p
